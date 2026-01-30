@@ -73,10 +73,14 @@ final class PermissionManager: ObservableObject {
 
     /// Request screen recording permission
     func requestScreenRecordingPermission() {
-        // Open System Settings to Screen Recording
+        // Open System Settings to Screen Recording (macOS Ventura and later)
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
             NSWorkspace.shared.open(url)
         }
+
+        // Fallback: try to trigger the system prompt by attempting a capture
+        // This will show the permission dialog if not already granted
+        CGRequestScreenCaptureAccess()
     }
 
     /// Request accessibility permission
@@ -92,10 +96,15 @@ final class PermissionManager: ObservableObject {
 
     /// Open Screen Recording settings
     func openScreenRecordingSettings() {
-        // Open System Settings directly to Screen Recording
+        // Open System Settings directly to Screen Recording (macOS Sonoma)
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    /// Trigger the screen recording system prompt
+    func triggerScreenRecordingPrompt() {
+        CGRequestScreenCaptureAccess()
     }
 
     /// Open Accessibility settings

@@ -28,11 +28,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Setup menu bar
         setupMenuBar()
 
-        // Check permissions silently - macOS handles the dialogs
-        checkPermissionsAndRegisterHotkeys()
-
-        // Start a timer to periodically check if permissions were granted
-        startPermissionMonitoring()
+        // Show permission onboarding if needed, then register hotkeys
+        PermissionOnboardingWindowController.shared.showIfNeeded { [weak self] in
+            self?.checkPermissionsAndRegisterHotkeys()
+            self?.startPermissionMonitoring()
+        }
     }
 
     private func checkPermissionsAndRegisterHotkeys() {

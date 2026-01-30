@@ -34,6 +34,7 @@ class FloatingWindowService: ObservableObject {
         window.backgroundColor = .clear
         window.hasShadow = true
         window.isMovableByWindowBackground = true
+        window.isReleasedWhenClosed = false
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
         let contentView = FloatingScreenshotView(

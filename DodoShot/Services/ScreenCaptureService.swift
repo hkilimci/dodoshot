@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import ScreenCaptureKit
 import Combine
 
 @MainActor
@@ -11,7 +10,7 @@ class ScreenCaptureService: ObservableObject {
     @Published var currentCapture: Screenshot?
     @Published var isCapturing = false
 
-    private var captureWindow: NSWindow?
+    private var captureWindows: [NSWindow] = []
     private var overlayWindow: NSWindow?
 
     private init() {}
@@ -38,25 +37,16 @@ class ScreenCaptureService: ObservableObject {
     func startScrollingCapture() {
         isCapturing = true
 
-        // First, user needs to select a window
-        Task {
-            do {
-                let content = try await SCShareableContent.current
-                let windows = content.windows.filter { window in
-                    window.isOnScreen &&
-                    window.frame.width > 100 &&
-                    window.frame.height > 100 &&
-                    window.owningApplication?.bundleIdentifier != Bundle.main.bundleIdentifier
-                }
+        // Get windows using CGWindowList API (no permission dialog)
+        let windows = WindowInfo.getVisibleWindows()
 
-                await MainActor.run {
-                    showWindowPickerForScrolling(windows: windows)
-                }
-            } catch {
-                print("Failed to get windows for scrolling capture: \(error)")
-                isCapturing = false
-            }
+        if windows.isEmpty {
+            print("No windows found for scrolling capture")
+            isCapturing = false
+            return
         }
+
+        showWindowPickerForScrolling(windows: windows)
     }
 
     func copyToClipboard(_ screenshot: Screenshot) {
@@ -67,23 +57,35 @@ class ScreenCaptureService: ObservableObject {
 
     func saveToFile(_ screenshot: Screenshot, url: URL? = nil) {
         let saveURL = url ?? getDefaultSaveURL()
+        let settings = SettingsManager.shared.settings
 
-        guard let tiffData = screenshot.image.tiffRepresentation,
-              let bitmapRep = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
-            return
+        // Ensure save directory exists
+        let saveDirectory = saveURL.deletingLastPathComponent()
+        if !FileManager.default.fileExists(atPath: saveDirectory.path) {
+            do {
+                try FileManager.default.createDirectory(at: saveDirectory, withIntermediateDirectories: true)
+            } catch {
+                print("Failed to create screenshots directory: \(error)")
+            }
         }
 
-        do {
-            try pngData.write(to: saveURL)
-        } catch {
-            print("Failed to save screenshot: \(error)")
+        // Use ImageFormatAnalyzer for intelligent format selection
+        if let savedURL = ImageFormatAnalyzer.shared.saveImage(
+            screenshot.image,
+            to: saveURL,
+            format: settings.imageFormat,
+            jpgQuality: settings.jpgQuality
+        ) {
+            print("Screenshot saved to: \(savedURL.path)")
         }
     }
 
     // MARK: - Area Capture
 
     private func startAreaCapture() {
+        // Close any existing capture windows first
+        closeCaptureWindows()
+
         // Get all screens for multi-monitor support
         let screens = NSScreen.screens
 
@@ -101,7 +103,7 @@ class ScreenCaptureService: ObservableObject {
 
             window.contentView = NSHostingView(rootView: contentView)
             window.makeKeyAndOrderFront(nil)
-            captureWindow = window
+            captureWindows.append(window)
         }
     }
 
@@ -119,6 +121,7 @@ class ScreenCaptureService: ObservableObject {
         window.ignoresMouseEvents = false
         window.acceptsMouseMovedEvents = true
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.isReleasedWhenClosed = false
         window.onEscape = { [weak self] in
             self?.cancelCapture()
         }
@@ -127,56 +130,57 @@ class ScreenCaptureService: ObservableObject {
     }
 
     private func captureArea(rect: CGRect, screen: NSScreen) {
-        closeCaptureWindow()
-
-        // Convert to screen coordinates
-        let screenRect = CGRect(
-            x: rect.origin.x + screen.frame.origin.x,
-            y: screen.frame.height - rect.origin.y - rect.height + screen.frame.origin.y,
-            width: rect.width,
-            height: rect.height
-        )
-
-        // Use CGWindowListCreateImage for capture
-        guard let cgImage = CGWindowListCreateImage(
-            screenRect,
-            .optionOnScreenBelowWindow,
-            kCGNullWindowID,
-            [.bestResolution]
-        ) else {
-            isCapturing = false
-            return
+        // Hide all capture windows first
+        for window in captureWindows {
+            window.orderOut(nil)
         }
 
-        let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-        completeCapture(image: nsImage, type: .area)
+        // Small delay to ensure windows are hidden before capture
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self = self else { return }
+
+            // Convert to screen coordinates
+            let screenRect = CGRect(
+                x: rect.origin.x + screen.frame.origin.x,
+                y: screen.frame.height - rect.origin.y - rect.height + screen.frame.origin.y,
+                width: rect.width,
+                height: rect.height
+            )
+
+            // Use CGWindowListCreateImage for capture
+            guard let cgImage = CGWindowListCreateImage(
+                screenRect,
+                .optionOnScreenBelowWindow,
+                kCGNullWindowID,
+                [.bestResolution]
+            ) else {
+                self.isCapturing = false
+                self.closeCaptureWindows()
+                return
+            }
+
+            let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+            self.closeCaptureWindows()
+            self.completeCapture(image: nsImage, type: .area)
+        }
     }
 
     // MARK: - Window Capture
 
     private func startWindowCapture() {
-        // Get list of windows
-        Task {
-            do {
-                let content = try await SCShareableContent.current
-                let windows = content.windows.filter { window in
-                    window.isOnScreen &&
-                    window.frame.width > 100 &&
-                    window.frame.height > 100 &&
-                    window.owningApplication?.bundleIdentifier != Bundle.main.bundleIdentifier
-                }
+        // Get windows using CGWindowList API (no permission dialog)
+        let windows = WindowInfo.getVisibleWindows()
 
-                await MainActor.run {
-                    showWindowPicker(windows: windows)
-                }
-            } catch {
-                print("Failed to get windows: \(error)")
-                isCapturing = false
-            }
+        if windows.isEmpty {
+            print("No windows found for capture")
+            isCapturing = false
+            return
         }
+
+        showWindowPicker(windows: windows)
     }
 
-    private func showWindowPicker(windows: [SCWindow]) {
+    private func showWindowPicker(windows: [WindowInfo]) {
         guard let screen = NSScreen.main else { return }
 
         let window = createCaptureOverlayWindow(for: screen)
@@ -192,16 +196,16 @@ class ScreenCaptureService: ObservableObject {
 
         window.contentView = NSHostingView(rootView: contentView)
         window.makeKeyAndOrderFront(nil)
-        captureWindow = window
+        captureWindows.append(window)
     }
 
-    private func captureWindow(_ window: SCWindow) {
-        closeCaptureWindow()
+    private func captureWindow(_ windowInfo: WindowInfo) {
+        closeCaptureWindows()
 
         guard let cgImage = CGWindowListCreateImage(
-            window.frame,
+            windowInfo.frame,
             .optionIncludingWindow,
-            CGWindowID(window.windowID),
+            windowInfo.windowID,
             [.bestResolution, .boundsIgnoreFraming]
         ) else {
             isCapturing = false
@@ -214,7 +218,7 @@ class ScreenCaptureService: ObservableObject {
 
     // MARK: - Scrolling Capture
 
-    private func showWindowPickerForScrolling(windows: [SCWindow]) {
+    private func showWindowPickerForScrolling(windows: [WindowInfo]) {
         guard let screen = NSScreen.main else { return }
 
         let window = createCaptureOverlayWindow(for: screen)
@@ -231,13 +235,13 @@ class ScreenCaptureService: ObservableObject {
 
         window.contentView = NSHostingView(rootView: contentView)
         window.makeKeyAndOrderFront(nil)
-        captureWindow = window
+        captureWindows.append(window)
     }
 
-    private func startScrollingCaptureForWindow(_ window: SCWindow) {
-        closeCaptureWindow()
+    private func startScrollingCaptureForWindow(_ windowInfo: WindowInfo) {
+        closeCaptureWindows()
 
-        ScrollingCaptureService.shared.startScrollingCapture(for: window) { [weak self] image in
+        ScrollingCaptureService.shared.startScrollingCapture(for: windowInfo) { [weak self] image in
             guard let self = self, let image = image else {
                 self?.isCapturing = false
                 return
@@ -344,9 +348,11 @@ class ScreenCaptureService: ObservableObject {
 
     // MARK: - Helpers
 
-    private func closeCaptureWindow() {
-        captureWindow?.close()
-        captureWindow = nil
+    private func closeCaptureWindows() {
+        for window in captureWindows {
+            window.close()
+        }
+        captureWindows.removeAll()
     }
 
     private func closeOverlayWindow() {
@@ -355,7 +361,7 @@ class ScreenCaptureService: ObservableObject {
     }
 
     private func cancelCapture() {
-        closeCaptureWindow()
+        closeCaptureWindows()
         isCapturing = false
     }
 
@@ -372,11 +378,7 @@ class ScreenCaptureService: ObservableObject {
 // MARK: - NSHostingView Helper
 import SwiftUI
 
-extension NSHostingView {
-    convenience init(rootView: some View) {
-        self.init(rootView: AnyView(rootView))
-    }
-}
+// Removed problematic NSHostingView extension that caused infinite recursion
 
 // MARK: - Capture Window (handles ESC key)
 class CaptureWindow: NSWindow {
@@ -388,12 +390,22 @@ class CaptureWindow: NSWindow {
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 53 { // ESC key
             onEscape?()
+            // Don't call super - consume the event completely
         } else {
             super.keyDown(with: event)
         }
     }
 
     override func cancelOperation(_ sender: Any?) {
+        // Handle ESC/Cmd+. - don't propagate to prevent app termination
         onEscape?()
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.keyCode == 53 { // ESC key
+            onEscape?()
+            return true // Event handled, don't propagate
+        }
+        return super.performKeyEquivalent(with: event)
     }
 }

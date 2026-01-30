@@ -12,6 +12,7 @@ class MeasurementService: ObservableObject {
     @Published var lastMeasurement: Measurement?
 
     private var measurementWindow: NSWindow?
+    private var colorInfoWindow: NSWindow?
 
     struct Measurement {
         let start: CGPoint
@@ -120,48 +121,59 @@ class MeasurementService: ObservableObject {
         window.ignoresMouseEvents = false
         window.acceptsMouseMovedEvents = true
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.isReleasedWhenClosed = false
 
         return window
     }
 
     private func showColorInfo(_ color: NSColor) {
+        // Close the picker FIRST (before creating new window)
+        // This ensures window management is clean
+        stopColorPicker()
+
+        // Close any existing color info window
+        colorInfoWindow?.close()
+        colorInfoWindow = nil
+
         // Create a floating window showing the picked color
-        let colorWindow = NSWindow(
+        let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 200, height: 160),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
 
-        colorWindow.level = .floating
-        colorWindow.isOpaque = false
-        colorWindow.backgroundColor = .clear
-        colorWindow.hasShadow = true
+        window.level = .floating
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = true
+        window.isReleasedWhenClosed = false
 
         let colorInfoView = ColorInfoView(
             color: color,
-            onDismiss: { [weak colorWindow] in
-                colorWindow?.close()
+            onDismiss: { [weak self] in
+                self?.colorInfoWindow?.close()
+                self?.colorInfoWindow = nil
             },
             onCopy: { [weak self] format in
                 self?.copyColorToClipboard(color, format: format)
             }
         )
 
-        colorWindow.contentView = NSHostingView(rootView: colorInfoView)
+        window.contentView = NSHostingView(rootView: colorInfoView)
+
+        // Store reference BEFORE showing (prevents deallocation)
+        colorInfoWindow = window
 
         // Position near cursor
         if let mouseLocation = NSEvent.mouseLocation as CGPoint? {
-            colorWindow.setFrameOrigin(NSPoint(
+            window.setFrameOrigin(NSPoint(
                 x: mouseLocation.x + 20,
                 y: mouseLocation.y - 160
             ))
         }
 
-        colorWindow.makeKeyAndOrderFront(nil)
-
-        // Close the picker
-        stopColorPicker()
+        window.makeKeyAndOrderFront(nil)
     }
 
     private func formatColor(_ color: NSColor, format: ColorFormat) -> String {
@@ -232,6 +244,11 @@ enum ColorFormat: String, CaseIterable {
 class MeasurementWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    override func cancelOperation(_ sender: Any?) {
+        // Don't propagate cancel/ESC to prevent app termination
+        // The SwiftUI view handles ESC via .onExitCommand
+    }
 }
 
 // MARK: - Pixel Ruler View

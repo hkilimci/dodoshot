@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import ScreenCaptureKit
 import CoreGraphics
 
 /// Service for capturing scrolling content by stitching multiple screenshots
@@ -12,7 +11,7 @@ class ScrollingCaptureService: ObservableObject {
     @Published var progress: CGFloat = 0
 
     private var scrollWindow: NSWindow?
-    private var targetWindow: SCWindow?
+    private var targetWindow: WindowInfo?
     private var captureTimer: Timer?
     private var lastScrollPosition: CGFloat = 0
     private var scrollDirection: ScrollDirection = .down
@@ -28,7 +27,7 @@ class ScrollingCaptureService: ObservableObject {
     // MARK: - Public Methods
 
     /// Start scrolling capture for a specific window
-    func startScrollingCapture(for window: SCWindow, direction: ScrollDirection = .down, completion: @escaping (NSImage?) -> Void) {
+    func startScrollingCapture(for window: WindowInfo, direction: ScrollDirection = .down, completion: @escaping (NSImage?) -> Void) {
         guard !isCapturing else { return }
 
         self.isCapturing = true
@@ -46,13 +45,9 @@ class ScrollingCaptureService: ObservableObject {
     func captureCurrentFrame() {
         guard let window = targetWindow else { return }
 
-        Task {
-            if let image = await captureWindowFrame(window) {
-                await MainActor.run {
-                    self.capturedFrames.append(image)
-                    self.progress = min(1.0, CGFloat(self.capturedFrames.count) / 10.0)
-                }
-            }
+        if let image = captureWindowFrame(window) {
+            self.capturedFrames.append(image)
+            self.progress = min(1.0, CGFloat(self.capturedFrames.count) / 10.0)
         }
     }
 
@@ -92,13 +87,8 @@ class ScrollingCaptureService: ObservableObject {
 
     // MARK: - Private Methods
 
-    private func showScrollingOverlay(for window: SCWindow) {
-        let windowFrame = CGRect(
-            x: CGFloat(window.frame.origin.x),
-            y: CGFloat(window.frame.origin.y),
-            width: CGFloat(window.frame.width),
-            height: CGFloat(window.frame.height)
-        )
+    private func showScrollingOverlay(for window: WindowInfo) {
+        let windowFrame = window.frame
 
         // Get screen for proper coordinate conversion
         guard let screen = NSScreen.screens.first(where: { screen in
@@ -121,7 +111,7 @@ class ScrollingCaptureService: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
-            let overlayWindow = NSWindow(
+            let overlayWindow = ScrollingCaptureWindow(
                 contentRect: overlayFrame,
                 styleMask: [.borderless],
                 backing: .buffered,
@@ -133,10 +123,17 @@ class ScrollingCaptureService: ObservableObject {
             overlayWindow.isOpaque = false
             overlayWindow.hasShadow = false
             overlayWindow.ignoresMouseEvents = false
+            overlayWindow.isReleasedWhenClosed = false
+            overlayWindow.onEscape = { [weak self] in
+                self?.cancelCapture()
+            }
+            overlayWindow.onEnter = { [weak self] in
+                self?.finishCapture()
+            }
 
             let overlayView = ScrollingCaptureOverlayView(
                 service: self,
-                windowTitle: window.title ?? "Window"
+                windowTitle: window.title ?? window.ownerName ?? "Window"
             )
             overlayWindow.contentView = NSHostingView(rootView: overlayView)
             overlayWindow.makeKeyAndOrderFront(nil)
@@ -148,29 +145,21 @@ class ScrollingCaptureService: ObservableObject {
         }
     }
 
-    private func captureWindowFrame(_ window: SCWindow) async -> NSImage? {
-        do {
-            let filter = SCContentFilter(desktopIndependentWindow: window)
-            let config = SCStreamConfiguration()
-            config.width = Int(window.frame.width) * 2 // Retina
-            config.height = Int(window.frame.height) * 2
-            config.scalesToFit = false
-            config.showsCursor = false
-
-            let image = try await SCScreenshotManager.captureImage(
-                contentFilter: filter,
-                configuration: config
-            )
-
-            let nsImage = NSImage(cgImage: image, size: NSSize(
-                width: window.frame.width,
-                height: window.frame.height
-            ))
-            return nsImage
-        } catch {
-            print("Failed to capture window frame: \(error)")
+    private func captureWindowFrame(_ window: WindowInfo) -> NSImage? {
+        guard let cgImage = CGWindowListCreateImage(
+            window.frame,
+            .optionIncludingWindow,
+            window.windowID,
+            [.bestResolution, .boundsIgnoreFraming]
+        ) else {
+            print("Failed to capture window frame")
             return nil
         }
+
+        return NSImage(cgImage: cgImage, size: NSSize(
+            width: window.frame.width,
+            height: window.frame.height
+        ))
     }
 
     /// Stitch multiple images together vertically
@@ -411,8 +400,41 @@ struct ScrollingCaptureOverlayView: View {
                     .shadow(radius: 10)
             )
         }
-        .onExitCommand {
-            service.cancelCapture()
+    }
+}
+
+// MARK: - Scrolling Capture Window (handles ESC key properly)
+class ScrollingCaptureWindow: NSWindow {
+    var onEscape: (() -> Void)?
+    var onEnter: (() -> Void)?
+
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { // ESC key
+            onEscape?()
+        } else if event.keyCode == 36 { // Enter key
+            onEnter?()
+        } else {
+            super.keyDown(with: event)
         }
+    }
+
+    override func cancelOperation(_ sender: Any?) {
+        // Handle ESC/Cmd+. - don't propagate to prevent app termination
+        onEscape?()
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.keyCode == 53 { // ESC key
+            onEscape?()
+            return true
+        }
+        if event.keyCode == 36 { // Enter key
+            onEnter?()
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
     }
 }

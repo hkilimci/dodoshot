@@ -62,6 +62,7 @@ struct Annotation: Identifiable {
     var color: NSColor
     var strokeWidth: CGFloat
     var text: String?
+    var points: [CGPoint]  // For freehand drawing
 
     init(
         id: UUID = UUID(),
@@ -70,7 +71,8 @@ struct Annotation: Identifiable {
         endPoint: CGPoint = .zero,
         color: NSColor = .systemRed,
         strokeWidth: CGFloat = 3.0,
-        text: String? = nil
+        text: String? = nil,
+        points: [CGPoint] = []
     ) {
         self.id = id
         self.type = type
@@ -79,11 +81,13 @@ struct Annotation: Identifiable {
         self.color = color
         self.strokeWidth = strokeWidth
         self.text = text
+        self.points = points
     }
 }
 
 /// Types of annotations available
 enum AnnotationType: String, CaseIterable {
+    case select = "Select"
     case arrow = "Arrow"
     case rectangle = "Rectangle"
     case ellipse = "Ellipse"
@@ -95,6 +99,7 @@ enum AnnotationType: String, CaseIterable {
 
     var icon: String {
         switch self {
+        case .select: return "cursorarrow"
         case .arrow: return "arrow.up.right"
         case .rectangle: return "rectangle"
         case .ellipse: return "circle"
@@ -122,6 +127,21 @@ enum AppearanceMode: String, Codable, CaseIterable {
     }
 }
 
+/// Image format for saving
+enum ImageFormat: String, Codable, CaseIterable {
+    case png = "PNG"
+    case jpg = "JPG"
+    case auto = "Auto"
+
+    var icon: String {
+        switch self {
+        case .png: return "doc.richtext"
+        case .jpg: return "photo"
+        case .auto: return "wand.and.stars"
+        }
+    }
+}
+
 /// App settings model
 struct AppSettings: Codable {
     var llmApiKey: String
@@ -132,17 +152,30 @@ struct AppSettings: Codable {
     var hideDesktopIcons: Bool
     var hotkeys: HotkeySettings
     var appearanceMode: AppearanceMode
+    var launchAtStartup: Bool
+    var imageFormat: ImageFormat
+    var jpgQuality: Double
+    var defaultAnnotationColor: String
+    var defaultStrokeWidth: Double
 
     static var `default`: AppSettings {
-        AppSettings(
+        let desktopPath = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first?.path ?? "~/Desktop"
+        let screenshotsPath = (desktopPath as NSString).appendingPathComponent("Screenshots")
+
+        return AppSettings(
             llmApiKey: "",
             llmProvider: .anthropic,
-            saveLocation: NSSearchPathForDirectoriesInDomains(.picturesDirectory, .userDomainMask, true).first ?? "~/Pictures",
+            saveLocation: screenshotsPath,
             autoCopyToClipboard: true,
             showQuickOverlay: true,
             hideDesktopIcons: false,
             hotkeys: .default,
-            appearanceMode: .dark
+            appearanceMode: .dark,
+            launchAtStartup: false,
+            imageFormat: .auto,
+            jpgQuality: 0.8,
+            defaultAnnotationColor: "red",
+            defaultStrokeWidth: 3.0
         )
     }
 }

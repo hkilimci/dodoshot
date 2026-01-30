@@ -13,9 +13,39 @@ struct AreaSelectionView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
+                // Mouse tracking layer (must be first to receive events)
+                MouseTrackingView(
+                    onMouseMove: { location in
+                        mouseLocation = location
+                    },
+                    onMouseDown: { location in
+                        startPoint = location
+                        currentPoint = location
+                        isDragging = true
+                    },
+                    onMouseDragged: { location in
+                        currentPoint = location
+                    },
+                    onMouseUp: { location in
+                        if let start = startPoint {
+                            let rect = selectionRect(from: start, to: location)
+                            if rect.width > 10 && rect.height > 10 {
+                                onComplete(rect)
+                            } else {
+                                // Too small, cancel
+                                onCancel()
+                            }
+                        }
+                        isDragging = false
+                    },
+                    onEscape: {
+                        onCancel()
+                    }
+                )
+
                 // Semi-transparent overlay
                 Color.black.opacity(0.3)
-                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
 
                 // Selection rectangle
                 if let start = startPoint, let current = currentPoint {
@@ -27,17 +57,21 @@ struct AreaSelectionView: View {
                         .frame(width: rect.width, height: rect.height)
                         .position(x: rect.midX, y: rect.midY)
                         .blendMode(.destinationOut)
+                        .allowsHitTesting(false)
 
                     // Selection border
                     SelectionBorder(rect: rect)
+                        .allowsHitTesting(false)
 
                     // Dimension label
                     DimensionLabel(rect: rect)
+                        .allowsHitTesting(false)
                 }
 
                 // Crosshair when not dragging
                 if !isDragging {
                     CrosshairView(position: mouseLocation, size: geometry.size)
+                        .allowsHitTesting(false)
                 }
 
                 // Instructions
@@ -47,39 +81,13 @@ struct AreaSelectionView: View {
                             .padding(.top, 60)
                         Spacer()
                     }
+                    .allowsHitTesting(false)
                 }
             }
             .compositingGroup()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(MouseTrackingView(
-                onMouseMove: { location in
-                    mouseLocation = location
-                },
-                onMouseDown: { location in
-                    startPoint = location
-                    currentPoint = location
-                    isDragging = true
-                },
-                onMouseDragged: { location in
-                    currentPoint = location
-                },
-                onMouseUp: { location in
-                    if let start = startPoint {
-                        let rect = selectionRect(from: start, to: location)
-                        if rect.width > 10 && rect.height > 10 {
-                            onComplete(rect)
-                        } else {
-                            // Too small, cancel
-                            onCancel()
-                        }
-                    }
-                    isDragging = false
-                },
-                onEscape: {
-                    onCancel()
-                }
-            ))
         }
+        .ignoresSafeArea()
     }
 
     private func selectionRect(from start: CGPoint, to end: CGPoint) -> CGRect {
@@ -291,6 +299,17 @@ class MouseTrackingNSView: NSView {
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 53 { // ESC key
             onEscape?()
+            // Don't call super - consume the event to prevent app termination
+        } else {
+            super.keyDown(with: event)
         }
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.keyCode == 53 { // ESC key
+            onEscape?()
+            return true // Event handled
+        }
+        return super.performKeyEquivalent(with: event)
     }
 }

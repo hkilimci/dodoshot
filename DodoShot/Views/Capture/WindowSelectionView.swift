@@ -1,10 +1,9 @@
 import SwiftUI
-import ScreenCaptureKit
 import AppKit
 
 struct WindowSelectionView: View {
-    let windows: [SCWindow]
-    let onSelect: (SCWindow) -> Void
+    let windows: [WindowInfo]
+    let onSelect: (WindowInfo) -> Void
     let onCancel: () -> Void
     var title: String = L10n.WindowSelection.title + " • " + L10n.WindowSelection.escToCancel
 
@@ -45,7 +44,7 @@ struct WindowSelectionView: View {
 
 // MARK: - Window Highlight
 struct WindowHighlight: View {
-    let window: SCWindow
+    let window: WindowInfo
     let isHovered: Bool
     let onHover: (Bool) -> Void
     let onSelect: () -> Void
@@ -99,21 +98,19 @@ struct WindowHighlight: View {
 
 // MARK: - Window Info Badge
 struct WindowInfoBadge: View {
-    let window: SCWindow
+    let window: WindowInfo
 
     var body: some View {
         HStack(spacing: 8) {
             // App icon
-            if let app = window.owningApplication {
-                let bundleID = app.bundleIdentifier
-                if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-                    AsyncAppIcon(appURL: appURL)
-                        .frame(width: 20, height: 20)
-                }
+            if let bundleID = window.bundleIdentifier,
+               let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+                AsyncAppIcon(appURL: appURL)
+                    .frame(width: 20, height: 20)
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(window.owningApplication?.applicationName ?? "Unknown")
+                Text(window.ownerName ?? "Unknown")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.white)
 

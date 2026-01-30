@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import ScreenCaptureKit
 import Combine
 
 /// Manager for handling Screen Recording and Accessibility permissions
@@ -15,6 +14,9 @@ final class PermissionManager: ObservableObject {
 
     /// Timer for checking permission status
     private var checkTimer: Timer?
+
+    /// Flag to prevent repeated screen recording checks while system dialog is open
+    private var isCheckingScreenRecording: Bool = false
 
     private init() {
         checkPermissions()
@@ -35,18 +37,12 @@ final class PermissionManager: ObservableObject {
 
     /// Check screen recording permission
     func checkScreenRecordingPermission() {
-        Task {
-            do {
-                // Attempting to get shareable content will fail if permission not granted
-                _ = try await SCShareableContent.current
-                await MainActor.run {
-                    self.isScreenRecordingGranted = true
-                }
-            } catch {
-                await MainActor.run {
-                    self.isScreenRecordingGranted = false
-                }
-            }
+        // Use CGPreflightScreenCaptureAccess to check permission without triggering dialog
+        // This is the recommended way on macOS 10.15+
+        let hasAccess = CGPreflightScreenCaptureAccess()
+
+        DispatchQueue.main.async { [weak self] in
+            self?.isScreenRecordingGranted = hasAccess
         }
     }
 
@@ -81,6 +77,7 @@ final class PermissionManager: ObservableObject {
 
     /// Open Screen Recording settings
     func openScreenRecordingSettings() {
+        // Open System Settings directly to Screen Recording
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
             NSWorkspace.shared.open(url)
         }

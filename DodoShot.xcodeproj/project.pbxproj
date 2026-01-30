@@ -21,6 +21,8 @@
 		A000000012 /* AnnotationEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B000000014 /* AnnotationEditorView.swift */; };
 		A000000013 /* OCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B000000015 /* OCRService.swift */; };
 		A000000014 /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B000000016 /* LLMService.swift */; };
+		IFA000001 /* ImageFormatAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = IFB000001 /* ImageFormatAnalyzer.swift */; };
+		LAA000001 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LAB000001 /* LaunchAtLoginManager.swift */; };
 		A000000015 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B000000017 /* PermissionManager.swift */; };
 		A000000016 /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B000000018 /* PermissionView.swift */; };
 		CFEB125692C81C032D338DE1 /* ScrollingCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B6EC90117531A792E155A3 /* ScrollingCaptureService.swift */; };
@@ -29,6 +31,12 @@
 		D2A3B4C5D6E7F8A9B0C1D2E3 /* DesktopIconsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A2B3C4D5E6F7A8B9C0D1E2 /* DesktopIconsService.swift */; };
 		H2A3B4C5D6E7F8A9B0C1D2E3 /* CaptureHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = H1A2B3C4D5E6F7A8B9C0D1E2 /* CaptureHistoryView.swift */; };
 		L1A2B3C4D5E6F7A8B9C0D1E2 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = L0A1B2C3D4E5F6A7B8C9D0E1 /* Localization.swift */; };
+		W1A2B3C4D5E6F7A8B9C0D1E2 /* WindowInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = W0A1B2C3D4E5F6A7B8C9D0E1 /* WindowInfo.swift */; };
+		EN2A3B4C5D6E7F8A9B0C1D2E /* en.lproj in Resources */ = {isa = PBXBuildFile; fileRef = EN1A2B3C4D5E6F7A8B9C0D1E /* en.lproj */; };
+		TR2A3B4C5D6E7F8A9B0C1D2E /* tr.lproj in Resources */ = {isa = PBXBuildFile; fileRef = TR1A2B3C4D5E6F7A8B9C0D1E /* tr.lproj */; };
+		FR2A3B4C5D6E7F8A9B0C1D2E /* fr.lproj in Resources */ = {isa = PBXBuildFile; fileRef = FR1A2B3C4D5E6F7A8B9C0D1E /* fr.lproj */; };
+		ES2A3B4C5D6E7F8A9B0C1D2E /* es.lproj in Resources */ = {isa = PBXBuildFile; fileRef = ES1A2B3C4D5E6F7A8B9C0D1E /* es.lproj */; };
+		DE2A3B4C5D6E7F8A9B0C1D2E /* de.lproj in Resources */ = {isa = PBXBuildFile; fileRef = DE1A2B3C4D5E6F7A8B9C0D1E /* de.lproj */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +57,8 @@
 		B000000014 /* AnnotationEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationEditorView.swift; sourceTree = "<group>"; };
 		B000000015 /* OCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRService.swift; sourceTree = "<group>"; };
 		B000000016 /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
+		IFB000001 /* ImageFormatAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageFormatAnalyzer.swift; sourceTree = "<group>"; };
+		LAB000001 /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
 		B000000017 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
 		B000000018 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		A9B6EC90117531A792E155A3 /* ScrollingCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollingCaptureService.swift; sourceTree = "<group>"; };
@@ -62,6 +72,7 @@
 		FR1A2B3C4D5E6F7A8B9C0D1E /* fr.lproj */ = {isa = PBXFileReference; lastKnownFileType = folder; path = fr.lproj; sourceTree = "<group>"; };
 		ES1A2B3C4D5E6F7A8B9C0D1E /* es.lproj */ = {isa = PBXFileReference; lastKnownFileType = folder; path = es.lproj; sourceTree = "<group>"; };
 		DE1A2B3C4D5E6F7A8B9C0D1E /* de.lproj */ = {isa = PBXFileReference; lastKnownFileType = folder; path = de.lproj; sourceTree = "<group>"; };
+		W0A1B2C3D4E5F6A7B8C9D0E1 /* WindowInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowInfo.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +121,7 @@
 			isa = PBXGroup;
 			children = (
 				B000000002 /* Screenshot.swift */,
+				W0A1B2C3D4E5F6A7B8C9D0E1 /* WindowInfo.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -141,6 +153,8 @@
 				F1A2B3C4D5E6F7A8B9C0D1E2 /* FloatingWindowService.swift */,
 				M1A2B3C4D5E6F7A8B9C0D1E2 /* MeasurementService.swift */,
 				D1A2B3C4D5E6F7A8B9C0D1E2 /* DesktopIconsService.swift */,
+				IFB000001 /* ImageFormatAnalyzer.swift */,
+				LAB000001 /* LaunchAtLoginManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -278,6 +292,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				A000000011 /* Assets.xcassets in Resources */,
+				EN2A3B4C5D6E7F8A9B0C1D2E /* en.lproj in Resources */,
+				TR2A3B4C5D6E7F8A9B0C1D2E /* tr.lproj in Resources */,
+				FR2A3B4C5D6E7F8A9B0C1D2E /* fr.lproj in Resources */,
+				ES2A3B4C5D6E7F8A9B0C1D2E /* es.lproj in Resources */,
+				DE2A3B4C5D6E7F8A9B0C1D2E /* de.lproj in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -309,6 +328,9 @@
 				D2A3B4C5D6E7F8A9B0C1D2E3 /* DesktopIconsService.swift in Sources */,
 				H2A3B4C5D6E7F8A9B0C1D2E3 /* CaptureHistoryView.swift in Sources */,
 				L1A2B3C4D5E6F7A8B9C0D1E2 /* Localization.swift in Sources */,
+				W1A2B3C4D5E6F7A8B9C0D1E2 /* WindowInfo.swift in Sources */,
+				IFA000001 /* ImageFormatAnalyzer.swift in Sources */,
+				LAA000001 /* LaunchAtLoginManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

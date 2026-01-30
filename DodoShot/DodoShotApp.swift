@@ -12,7 +12,7 @@ struct DodoShotApp: App {
     }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var captureService: ScreenCaptureService!
@@ -38,6 +38,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // Menu bar app should stay running even when all windows are closed
+        return false
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Log termination for debugging
+        print("DodoShot: applicationShouldTerminate called")
+        Thread.callStackSymbols.forEach { print($0) }
+        return .terminateNow
+    }
+
+    // MARK: - NSWindowDelegate
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        // Allow permission window to close normally
+        print("DodoShot: windowShouldClose called for \(sender.title)")
+        return true
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        print("DodoShot: windowWillClose called for \(window.title)")
+    }
+
     private func checkAndRequestPermissions() {
         let permissionManager = PermissionManager.shared
 
@@ -57,7 +82,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Create permission window
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 480),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 520),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -66,6 +91,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = "DodoShot Setup"
         window.center()
         window.isReleasedWhenClosed = false
+        window.delegate = self
 
         let permissionView = PermissionWindowView(
             onDismiss: { [weak self] in
@@ -383,7 +409,7 @@ struct PermissionWindowView: View {
             }
             .padding(.bottom, 24)
         }
-        .frame(width: 400, height: 480)
+        .frame(width: 400, height: 520)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             // Start monitoring only while this view is visible

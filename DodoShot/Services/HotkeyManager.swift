@@ -11,12 +11,17 @@ class HotkeyManager {
     private init() {}
 
     func registerHotkeys() {
-        // Request accessibility permissions
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-        let trusted = AXIsProcessTrustedWithOptions(options)
+        // Check accessibility permissions without prompting
+        // The prompt should only be shown from the permission UI, not here
+        let trusted = AXIsProcessTrusted()
 
         if !trusted {
             print("Accessibility permissions required for global hotkeys")
+            return
+        }
+
+        // Already registered, don't register again
+        if eventTap != nil {
             return
         }
 

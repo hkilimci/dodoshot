@@ -44,42 +44,69 @@ class QuickOverlayManager: ObservableObject {
     private func createWindow(for item: OverlayItem) {
         guard let screen = NSScreen.main else { return }
 
-        let baseY = screen.visibleFrame.minY + 20
-        let index = overlays.firstIndex(where: { $0.id == item.id }) ?? 0
-        let yOffset = CGFloat(index) * 90
+        // Calculate window size based on image aspect ratio
+        let imageSize = item.screenshot.image.size
+        let maxWidth: CGFloat = min(screen.visibleFrame.width * 0.85, 1200)
+        let maxHeight: CGFloat = min(screen.visibleFrame.height * 0.85, 900)
 
-        let windowSize = NSSize(width: 280, height: 80)
+        // Calculate size maintaining aspect ratio
+        var windowWidth = imageSize.width + 48  // padding for toolbar
+        var windowHeight = imageSize.height + 140  // toolbar + bottom bar
+
+        if windowWidth > maxWidth {
+            let scale = maxWidth / windowWidth
+            windowWidth = maxWidth
+            windowHeight = windowHeight * scale
+        }
+        if windowHeight > maxHeight {
+            let scale = maxHeight / windowHeight
+            windowHeight = maxHeight
+            windowWidth = windowWidth * scale
+        }
+
+        // Ensure minimum size
+        windowWidth = max(windowWidth, 700)
+        windowHeight = max(windowHeight, 500)
+
+        let windowSize = NSSize(width: windowWidth, height: windowHeight)
         let windowOrigin = NSPoint(
-            x: screen.visibleFrame.maxX - windowSize.width - 20,
-            y: baseY + yOffset
+            x: screen.visibleFrame.midX - windowSize.width / 2,
+            y: screen.visibleFrame.midY - windowSize.height / 2
         )
 
         let window = NSWindow(
             contentRect: NSRect(origin: windowOrigin, size: windowSize),
-            styleMask: [.borderless],
+            styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
 
+        window.title = "Edit Screenshot"
         window.level = .floating
-        window.isOpaque = false
-        window.backgroundColor = .clear
+        window.isOpaque = true
+        window.backgroundColor = NSColor.windowBackgroundColor
         window.hasShadow = true
-        window.isMovableByWindowBackground = true
+        window.isReleasedWhenClosed = false
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.minSize = NSSize(width: 600, height: 450)
 
-        let contentView = CompactOverlayView(
+        let contentView = AnnotationEditorView(
             screenshot: item.screenshot,
-            onDismiss: { [weak self] in
+            onSave: { [weak self] updatedScreenshot in
+                // Save the annotated screenshot
+                Task { @MainActor in
+                    ScreenCaptureService.shared.saveToFile(updatedScreenshot)
+                }
                 self?.dismissOverlay(id: item.id)
             },
-            onExpand: { [weak self] in
-                self?.toggleExpand(id: item.id)
+            onCancel: { [weak self] in
+                self?.dismissOverlay(id: item.id)
             }
         )
 
         window.contentView = NSHostingView(rootView: contentView)
         window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
 
         // Animate in
         window.alphaValue = 0

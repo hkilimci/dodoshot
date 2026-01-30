@@ -42,6 +42,26 @@ struct GeneralSettingsTab: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                // Startup Section
+                SettingsSection(
+                    icon: "power",
+                    title: "Startup",
+                    iconColor: .green
+                ) {
+                    SettingsToggleRow(
+                        icon: "arrow.clockwise",
+                        title: "Launch at login",
+                        description: "Automatically start DodoShot when you log in",
+                        isOn: Binding(
+                            get: { settingsManager.settings.launchAtStartup },
+                            set: { newValue in
+                                settingsManager.settings.launchAtStartup = newValue
+                                LaunchAtLoginManager.shared.setEnabled(newValue)
+                            }
+                        )
+                    )
+                }
+
                 // Appearance Section
                 SettingsSection(
                     icon: "paintbrush",
@@ -111,7 +131,8 @@ struct GeneralSettingsTab: View {
                     title: L10n.Settings.storage,
                     iconColor: .orange
                 ) {
-                    VStack(spacing: 8) {
+                    VStack(spacing: 16) {
+                        // Save location
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(L10n.Settings.saveLocation)
@@ -146,6 +167,60 @@ struct GeneralSettingsTab: View {
                                 isHoveringPath = hovering
                             }
                         }
+
+                        Divider()
+
+                        // Image format
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Image format")
+                                .font(.system(size: 13, weight: .medium))
+
+                            HStack(spacing: 8) {
+                                ForEach(ImageFormat.allCases, id: \.self) { format in
+                                    ImageFormatButton(
+                                        format: format,
+                                        isSelected: settingsManager.settings.imageFormat == format
+                                    ) {
+                                        settingsManager.settings.imageFormat = format
+                                    }
+                                }
+                            }
+
+                            if settingsManager.settings.imageFormat == .auto {
+                                Text("Automatically selects PNG for screenshots with text/UI, JPG for photos")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+
+                        // JPG Quality (only show when JPG or Auto is selected)
+                        if settingsManager.settings.imageFormat != .png {
+                            Divider()
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("JPG quality")
+                                        .font(.system(size: 13, weight: .medium))
+                                    Spacer()
+                                    Text("\(Int(settingsManager.settings.jpgQuality * 100))%")
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Slider(value: $settingsManager.settings.jpgQuality, in: 0.5...1.0, step: 0.05)
+                                    .tint(.orange)
+
+                                HStack {
+                                    Text("Smaller file")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Text("Better quality")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -161,6 +236,41 @@ struct GeneralSettingsTab: View {
 
         if panel.runModal() == .OK, let url = panel.url {
             settingsManager.settings.saveLocation = url.path
+        }
+    }
+}
+
+// MARK: - Image Format Button
+struct ImageFormatButton: View {
+    let format: ImageFormat
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: format.icon)
+                    .font(.system(size: 11, weight: .medium))
+
+                Text(format.rawValue)
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundColor(isSelected ? .white : .primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? Color.orange : Color.primary.opacity(isHovered ? 0.08 : 0.04))
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovered = hovering
+            }
         }
     }
 }

@@ -2,22 +2,23 @@ import Foundation
 import Vision
 import AppKit
 
-/// Service for extracting text from images using Apple's Vision framework
+/// Service for performing OCR on images using Apple's Vision framework
 class OCRService {
     static let shared = OCRService()
 
     private init() {}
 
-    /// Extract text from an NSImage
-    /// - Parameters:
-    ///   - image: The image to extract text from
-    ///   - completion: Callback with extracted text or error
+    /// Perform OCR on an image and return extracted text
     func extractText(from image: NSImage, completion: @escaping (Result<String, Error>) -> Void) {
         guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             completion(.failure(OCRError.invalidImage))
             return
         }
 
+        // Create a request handler
+        let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+
+        // Create the text recognition request
         let request = VNRecognizeTextRequest { request, error in
             if let error = error {
                 DispatchQueue.main.async {
@@ -33,29 +34,28 @@ class OCRService {
                 return
             }
 
-            let text = observations.compactMap { observation in
+            // Extract text from observations
+            let extractedText = observations.compactMap { observation in
                 observation.topCandidates(1).first?.string
             }.joined(separator: "\n")
 
             DispatchQueue.main.async {
-                if text.isEmpty {
+                if extractedText.isEmpty {
                     completion(.failure(OCRError.noTextFound))
                 } else {
-                    completion(.success(text))
+                    completion(.success(extractedText))
                 }
             }
         }
 
-        // Configure for best accuracy
+        // Configure for accuracy
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
-        request.recognitionLanguages = ["en-US", "en-GB"]
 
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-
+        // Perform the request
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                try handler.perform([request])
+                try requestHandler.perform([request])
             } catch {
                 DispatchQueue.main.async {
                     completion(.failure(error))
@@ -64,30 +64,14 @@ class OCRService {
         }
     }
 
-    /// Extract text from an NSImage (async version)
-    @MainActor
-    func extractText(from image: NSImage) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            extractText(from: image) { result in
-                switch result {
-                case .success(let text):
-                    continuation.resume(returning: text)
-                case .failure(let error):
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
     /// Copy extracted text to clipboard
-    func copyTextToClipboard(_ text: String) {
+    func copyToClipboard(_ text: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
     }
 }
 
-// MARK: - OCR Errors
 enum OCRError: LocalizedError {
     case invalidImage
     case noTextFound
@@ -95,9 +79,9 @@ enum OCRError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidImage:
-            return "Could not process the image"
+            return "Could not process image for text extraction"
         case .noTextFound:
-            return "No text found in the image"
+            return "No text found in image"
         }
     }
 }

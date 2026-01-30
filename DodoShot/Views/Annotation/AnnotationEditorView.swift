@@ -284,13 +284,17 @@ struct AnnotationEditorView: View {
                     }
                     .padding(24)
 
-                    // OCR result notification
-                    if showOCRResult, let result = ocrResult {
-                        ocrResultOverlay(result: result)
-                    }
                 }
                 .clipped()
                 .cmdScrollZoom(zoom: $zoom)
+                .overlay(
+                    // OCR result notification (placed outside clipped area)
+                    Group {
+                        if showOCRResult, let result = ocrResult {
+                            ocrResultOverlay(result: result)
+                        }
+                    }
+                )
 
                 // Backdrop settings panel (right side)
                 if showBackdropPanel {
@@ -1053,7 +1057,7 @@ struct AnnotationEditorView: View {
     private func performOCR() {
         isPerformingOCR = true
 
-        OCRService.shared.extractText(from: screenshot.image) { result in
+        OCRService.shared.extractText(from: screenshot.image) { [self] result in
             isPerformingOCR = false
 
             switch result {
@@ -1061,19 +1065,27 @@ struct AnnotationEditorView: View {
                 // Copy to clipboard
                 OCRService.shared.copyToClipboard(text)
                 ocrResult = text
-                showOCRResult = true
+                withAnimation(.spring(response: 0.3)) {
+                    showOCRResult = true
+                }
 
                 // Auto-hide after 3 seconds
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    showOCRResult = false
+                    withAnimation(.spring(response: 0.3)) {
+                        showOCRResult = false
+                    }
                 }
 
             case .failure(let error):
                 ocrResult = "Error: \(error.localizedDescription)"
-                showOCRResult = true
+                withAnimation(.spring(response: 0.3)) {
+                    showOCRResult = true
+                }
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    showOCRResult = false
+                    withAnimation(.spring(response: 0.3)) {
+                        showOCRResult = false
+                    }
                 }
             }
         }

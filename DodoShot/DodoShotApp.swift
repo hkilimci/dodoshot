@@ -39,7 +39,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let permissionManager = PermissionManager.shared
         permissionManager.checkPermissions()
 
-        if permissionManager.isAccessibilityGranted {
+        // Try to register hotkeys directly using AXIsProcessTrusted
+        // This is more reliable than checking the @Published property
+        if AXIsProcessTrusted() {
+            hotkeyManager.registerHotkeys()
+        } else if permissionManager.isAccessibilityGranted {
             hotkeyManager.registerHotkeys()
         }
     }
@@ -50,11 +54,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let permissionManager = PermissionManager.shared
             permissionManager.checkPermissions()
 
-            // Register hotkeys once accessibility is granted
-            if permissionManager.isAccessibilityGranted {
+            // Register hotkeys once accessibility is granted (use direct check for reliability)
+            if AXIsProcessTrusted() {
                 self?.hotkeyManager.registerHotkeys()
-                // Stop checking once permissions are granted
-                if permissionManager.allPermissionsGranted {
+                // Stop checking once all permissions are granted
+                if CGPreflightScreenCaptureAccess() {
                     self?.permissionCheckTimer?.invalidate()
                     self?.permissionCheckTimer = nil
                 }

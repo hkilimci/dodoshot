@@ -290,6 +290,7 @@ struct AnnotationEditorView: View {
                     }
                 }
                 .clipped()
+                .cmdScrollZoom(zoom: $zoom)
 
                 // Backdrop settings panel (right side)
                 if showBackdropPanel {
@@ -2789,5 +2790,60 @@ struct CheckerboardPattern: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Scroll Wheel Modifier for Cmd+Scroll Zoom
+struct ScrollWheelModifier: ViewModifier {
+    @Binding var zoom: CGFloat
+    let minZoom: CGFloat
+    let maxZoom: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                ScrollWheelCaptureView(zoom: $zoom, minZoom: minZoom, maxZoom: maxZoom)
+            )
+    }
+}
+
+struct ScrollWheelCaptureView: NSViewRepresentable {
+    @Binding var zoom: CGFloat
+    let minZoom: CGFloat
+    let maxZoom: CGFloat
+
+    func makeNSView(context: Context) -> NSView {
+        let view = ScrollWheelNSView()
+        view.onScroll = { deltaY, modifiers in
+            if modifiers.contains(.command) {
+                // Cmd + scroll to zoom
+                let zoomDelta = deltaY * 0.05
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    zoom = max(minZoom, min(maxZoom, zoom + zoomDelta))
+                }
+                return true // Consumed the event
+            }
+            return false // Let scroll pass through
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+class ScrollWheelNSView: NSView {
+    var onScroll: ((CGFloat, NSEvent.ModifierFlags) -> Bool)?
+
+    override func scrollWheel(with event: NSEvent) {
+        if let onScroll = onScroll, onScroll(event.scrollingDeltaY, event.modifierFlags) {
+            return // Event consumed
+        }
+        super.scrollWheel(with: event)
+    }
+}
+
+extension View {
+    func cmdScrollZoom(zoom: Binding<CGFloat>, minZoom: CGFloat = 0.25, maxZoom: CGFloat = 3.0) -> some View {
+        modifier(ScrollWheelModifier(zoom: zoom, minZoom: minZoom, maxZoom: maxZoom))
     }
 }

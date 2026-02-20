@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject private var settingsManager = SettingsManager.shared
@@ -195,9 +195,11 @@ struct GeneralSettingsTab: View {
                             }
 
                             if settingsManager.settings.imageFormat == .auto {
-                                Text("Automatically selects PNG for screenshots with text/UI, JPG for photos")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
+                                Text(
+                                    "Automatically selects PNG for screenshots with text/UI, JPG for photos"
+                                )
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
                             }
                         }
 
@@ -215,8 +217,11 @@ struct GeneralSettingsTab: View {
                                         .foregroundColor(.secondary)
                                 }
 
-                                Slider(value: $settingsManager.settings.jpgQuality, in: 0.5...1.0, step: 0.05)
-                                    .tint(.orange)
+                                Slider(
+                                    value: $settingsManager.settings.jpgQuality, in: 0.5...1.0,
+                                    step: 0.05
+                                )
+                                .tint(.orange)
 
                                 HStack {
                                     Text("Smaller file")
@@ -271,7 +276,8 @@ struct ImageFormatButton: View {
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.orange : Color.primary.opacity(isHovered ? 0.08 : 0.04))
+                    .fill(
+                        isSelected ? Color.orange : Color.primary.opacity(isHovered ? 0.08 : 0.04))
             )
         }
         .buttonStyle(.plain)
@@ -340,7 +346,10 @@ struct AppearanceModeButton: View {
                     .frame(width: 44, height: 44)
                     .background(
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(isSelected ? Color.accentColor : Color.primary.opacity(isHovered ? 0.1 : 0.06))
+                            .fill(
+                                isSelected
+                                    ? Color.accentColor
+                                    : Color.primary.opacity(isHovered ? 0.1 : 0.06))
                     )
 
                 Text(mode.rawValue)
@@ -489,7 +498,11 @@ struct HotkeyRow: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(isRecording ? Color.orange.opacity(0.15) : Color.primary.opacity(isHovered ? 0.1 : 0.06))
+                        .fill(
+                            isRecording
+                                ? Color.orange.opacity(0.15)
+                                : Color.primary.opacity(isHovered ? 0.1 : 0.06)
+                        )
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(isRecording ? Color.orange : Color.clear, lineWidth: 1.5)
@@ -553,9 +566,7 @@ struct PermissionsNotice: View {
     }
 
     private func openAccessibilitySettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
+        PermissionManager.shared.openAccessibilitySettings()
     }
 }
 
@@ -604,9 +615,13 @@ struct AISettingsTab: View {
                             HStack(spacing: 8) {
                                 Group {
                                     if showAPIKey {
-                                        TextField(L10n.Settings.apiKeyPlaceholder, text: $settingsManager.settings.llmApiKey)
+                                        TextField(
+                                            L10n.Settings.apiKeyPlaceholder,
+                                            text: $settingsManager.settings.llmApiKey)
                                     } else {
-                                        SecureField(L10n.Settings.apiKeyPlaceholder, text: $settingsManager.settings.llmApiKey)
+                                        SecureField(
+                                            L10n.Settings.apiKeyPlaceholder,
+                                            text: $settingsManager.settings.llmApiKey)
                                     }
                                 }
                                 .textFieldStyle(.plain)
@@ -628,7 +643,9 @@ struct AISettingsTab: View {
                                         .frame(width: 32, height: 32)
                                         .background(
                                             RoundedRectangle(cornerRadius: 6)
-                                                .fill(Color.primary.opacity(isHoveredEye ? 0.08 : 0.04))
+                                                .fill(
+                                                    Color.primary.opacity(
+                                                        isHoveredEye ? 0.08 : 0.04))
                                         )
                                 }
                                 .buttonStyle(.plain)
@@ -686,7 +703,9 @@ struct ProviderButton: View {
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.accentColor : Color.primary.opacity(isHovered ? 0.08 : 0.04))
+                    .fill(
+                        isSelected
+                            ? Color.accentColor : Color.primary.opacity(isHovered ? 0.08 : 0.04))
             )
         }
         .buttonStyle(.plain)
@@ -787,7 +806,9 @@ struct AboutTab: View {
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [Color.purple.opacity(0.3), Color.blue.opacity(0.1), Color.clear],
+                            colors: [
+                                Color.purple.opacity(0.3), Color.blue.opacity(0.1), Color.clear,
+                            ],
                             center: .center,
                             startRadius: 30,
                             endRadius: 70

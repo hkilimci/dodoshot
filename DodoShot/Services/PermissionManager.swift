@@ -205,12 +205,7 @@ final class PermissionManager: ObservableObject {
 
     /// Request screen recording permission
     func requestScreenRecordingPermission() {
-        // Open System Settings to Screen Recording (macOS Ventura and later)
-        if let url = URL(
-            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
-        {
-            NSWorkspace.shared.open(url)
-        }
+        openPrivacySettingsPane(key: "Privacy_ScreenCapture")
 
         // Fallback: try to trigger the system prompt by attempting a capture
         // This will show the permission dialog if not already granted
@@ -231,12 +226,7 @@ final class PermissionManager: ObservableObject {
 
     /// Open Screen Recording settings
     func openScreenRecordingSettings() {
-        // Open System Settings directly to Screen Recording (macOS Sonoma)
-        if let url = URL(
-            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
-        {
-            NSWorkspace.shared.open(url)
-        }
+        openPrivacySettingsPane(key: "Privacy_ScreenCapture")
     }
 
     /// Trigger the screen recording system prompt
@@ -246,18 +236,39 @@ final class PermissionManager: ObservableObject {
 
     /// Open Accessibility settings
     func openAccessibilitySettings() {
-        // Prefer the standard Privacy deep link used elsewhere in the app.
-        if let url = URL(
-            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-        ), NSWorkspace.shared.open(url) {
+        if openPrivacySettingsPane(key: "Privacy_Accessibility") {
             return
         }
 
         // Fallback to generic Privacy & Security if deep-linking fails.
-        if let fallbackURL = URL(string: "x-apple.systempreferences:com.apple.preference.security")
-        {
-            NSWorkspace.shared.open(fallbackURL)
+        let fallbackURLs = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension",
+            "x-apple.systempreferences:com.apple.preference.security",
+        ]
+
+        for candidate in fallbackURLs {
+            if let fallbackURL = URL(string: candidate), NSWorkspace.shared.open(fallbackURL) {
+                return
+            }
         }
+    }
+
+    @discardableResult
+    private func openPrivacySettingsPane(key: String) -> Bool {
+        let urls = [
+            // macOS 13+ format (Ventura, Sonoma, Sequoia)
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?\(key)",
+            // Legacy format kept as fallback
+            "x-apple.systempreferences:com.apple.preference.security?\(key)",
+        ]
+
+        for candidate in urls {
+            if let url = URL(string: candidate), NSWorkspace.shared.open(url) {
+                return true
+            }
+        }
+
+        return false
     }
 
     /// Show app in Finder (for drag and drop to settings)
